@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>b'day mott</title>
+
+    <!-- Import Font -->
+    <link href="https://fonts.googleapis.com/css?family=Indie+Flower" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Amatic+SC" rel="stylesheet">
+
+    <!-- Link ke CSS eksternal -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- BAGIAN 1: KUE & INTERAKSI -->
+    <div id="cake-section">
+        <h1>Blow Out The Candles</h1>
+
+        <div class="cake-container">
+            <img src="kue.png" alt="Kue Ulang Tahun" class="cake-img">
+            <!-- Lilin 1 -->
+            <div class="candle" data-candle="1">
+                <div class="flame" id="flame-1"></div>
+                <div class="smoke" id="smoke-1"></div>
+            </div>
+        </div>
+
+        <button id="startBtn">allow access to mic</button>
+        <div id="status"></div>
+    </div>
+
+    <!-- BAGIAN 2: KARTU UCAPAN -->
+    <div id="card-section">
+        <div class="card">
+            <div class="imgBox">
+                <div class="bark"></div>
+                <img src="https://i.ibb.co.com/4RM5THvK/cover-1.png">
+            </div>
+            <div class="details">
+                <h4 class="color1">WISH YOU ALL THE BEST!!</h4>
+                <h4 class="color2">(HAPPY BIRTHDAY)</h4>
+                <p>dear zahra (timott),</p>
+                <p> Let's See...</p>
+                <p>Selamat di usia 18y nya timott</p>
+                <p>semoga harimu dipenuhi jejak-jejak indah</p>
+                <p>tetaplah jadi timott yang selalu</p>
+                <p>terlihat ceria itu, bagaimanapun caranya</p>
+                <p class="text-right">Congrats Repeat Year, timott!</p>
+                <p class="text-right">mesyam</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const startBtn = document.getElementById('startBtn');
+        const statusText = document.getElementById('status');
+        const cakeSection = document.getElementById('cake-section');
+        const cardSection = document.getElementById('card-section');
+
+        let audioContext;
+        let analyser;
+        let microphone;
+        let javascriptNode;
+        let candleBlownOut = false;
+        let isListening = false;
+        let volumeHistory = [];
+        let historyIndex = 0;
+        const HISTORY_SIZE = 10;
+
+        startBtn.addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                microphone = audioContext.createMediaStreamSource(stream);
+                javascriptNode = audioContext.createScriptProcessor(2048, 1, 1);
+
+                analyser.smoothingTimeConstant = 0.85;
+                analyser.fftSize = 1024;
+
+                microphone.connect(analyser);
+                analyser.connect(javascriptNode);
+                javascriptNode.connect(audioContext.destination);
+
+                startBtn.style.display = 'none';
+                statusText.innerText = "blow";
+                isListening = true;
+
+                javascriptNode.onaudioprocess = () => {
+                    if (!isListening || candleBlownOut) return;
+
+                    const array = new Uint8Array(analyser.frequencyBinCount);
+                    analyser.getByteFrequencyData(array);
+
+                    let sum = 0;
+                    for (let i = 0; i < 50; i++) {
+                        sum += array[i];
+                    }
+                    const average = sum / 50;
+
+                    volumeHistory[historyIndex] = average;
+                    historyIndex = (historyIndex + 1) % HISTORY_SIZE;
+
+                    let total = 0;
+                    for (let i = 0; i < HISTORY_SIZE; i++) {
+                        total += volumeHistory[i];
+                    }
+                    const avgVolume = total / HISTORY_SIZE;
+
+                    // THRESHOLD DINAIKKAN (lebih effort untuk tiup)
+                    if (avgVolume > 100) {
+                        blowOutCandle();
+                        isListening = false;
+                        javascriptNode.onaudioprocess = null;
+                    }
+                };
+
+            } catch (err) {
+                console.error(err);
+                statusText.innerText = "Gagal mengakses mikrofon";
+            }
+        });
+
+        function blowOutCandle() {
+            candleBlownOut = true;
+
+            const flames = document.querySelectorAll('.flame');
+            const smokes = document.querySelectorAll('.smoke');
+
+            flames.forEach(flame => {
+                flame.classList.add('out');
+            });
+
+            smokes.forEach(smoke => {
+                smoke.classList.add('rise');
+            });
+
+            statusText.innerText = "Happy Birthday!";
+
+            setTimeout(() => {
+                cakeSection.style.opacity = '0';
+
+                setTimeout(() => {
+                    cakeSection.style.display = 'none';
+                    cardSection.style.display = 'flex';
+                }, 1000);
+
+            }, 1500);
+        }
+    </script>
+</body>
+</html>
